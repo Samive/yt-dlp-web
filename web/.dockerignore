@@ -1,0 +1,8 @@
+web/backend/downloads/
+web/backend/cookies.txt
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.git/
+*.egg-info/
