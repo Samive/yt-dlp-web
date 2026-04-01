@@ -1,0 +1,4 @@
+fastapi==0.135.2
+uvicorn[standard]
+httpx
+yt-dlp==2026.3.17
