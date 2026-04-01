@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+import sys
+>>>>>>> 831b5f7dab502c2631355cc9a518dcd5d832690b
 import json
 import uuid
 import asyncio
@@ -10,6 +14,10 @@ from fastapi.responses import StreamingResponse, Response, JSONResponse, FileRes
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+<<<<<<< HEAD
+=======
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+>>>>>>> 831b5f7dab502c2631355cc9a518dcd5d832690b
 import yt_dlp
 
 app = FastAPI()

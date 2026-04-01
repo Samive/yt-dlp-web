@@ -25,8 +25,13 @@ A beautiful, self-hosted web application for downloading YouTube (and 1000+ othe
 ### Pull and run from Docker Hub
 
 ```bash
+<<<<<<< HEAD
 docker pull samive/yt-dlp-web:latest
 docker run -d -p 8000:8000 --name yt-dlp-web samive/yt-dlp-web:latest
+=======
+docker pull YOUR_DOCKERHUB_USERNAME/yt-dlp-web:latest
+docker run -d -p 8000:8000 --name yt-dlp-web YOUR_DOCKERHUB_USERNAME/yt-dlp-web:latest
+>>>>>>> 831b5f7dab502c2631355cc9a518dcd5d832690b
 ```
 
 Then open **http://localhost:8000** in your browser.
@@ -38,7 +43,11 @@ docker run -d \
   -p 8000:8000 \
   -v $(pwd)/downloads:/app/web/backend/downloads \
   --name yt-dlp-web \
+<<<<<<< HEAD
   samive/yt-dlp-web:latest
+=======
+  YOUR_DOCKERHUB_USERNAME/yt-dlp-web:latest
+>>>>>>> 831b5f7dab502c2631355cc9a518dcd5d832690b
 ```
 
 ### Stop / remove the container
@@ -115,7 +124,11 @@ docker run -d \
   -p 8000:8000 \
   -v $(pwd)/cookies.txt:/app/web/backend/cookies.txt:ro \
   --name yt-dlp-web \
+<<<<<<< HEAD
   samive/yt-dlp-web:latest
+=======
+  YOUR_DOCKERHUB_USERNAME/yt-dlp-web:latest
+>>>>>>> 831b5f7dab502c2631355cc9a518dcd5d832690b
 ```
 
 > **Note:** Using cookies with Chrome on Windows may cause issues due to DPAPI encryption. Firefox or Edge cookies work more reliably.
@@ -137,26 +150,43 @@ docker login
 ### 3. Build and tag the image
 
 ```bash
+<<<<<<< HEAD
 docker build -t samive/yt-dlp-web:latest .
+=======
+docker build -t YOUR_DOCKERHUB_USERNAME/yt-dlp-web:latest .
+>>>>>>> 831b5f7dab502c2631355cc9a518dcd5d832690b
 ```
 
 ### 4. Push to Docker Hub
 
 ```bash
+<<<<<<< HEAD
 docker push samive/yt-dlp-web:latest
+=======
+docker push YOUR_DOCKERHUB_USERNAME/yt-dlp-web:latest
+>>>>>>> 831b5f7dab502c2631355cc9a518dcd5d832690b
 ```
 
 ### 5. (Optional) Tag a version
 
 ```bash
+<<<<<<< HEAD
 docker tag samive/yt-dlp-web:latest samive/yt-dlp-web:1.0.0
 docker push samive/yt-dlp-web:1.0.0
+=======
+docker tag YOUR_DOCKERHUB_USERNAME/yt-dlp-web:latest YOUR_DOCKERHUB_USERNAME/yt-dlp-web:1.0.0
+docker push YOUR_DOCKERHUB_USERNAME/yt-dlp-web:1.0.0
+>>>>>>> 831b5f7dab502c2631355cc9a518dcd5d832690b
 ```
 
 Anyone can now pull and run your image with:
 
 ```bash
+<<<<<<< HEAD
 docker pull samive/yt-dlp-web:latest
+=======
+docker pull YOUR_DOCKERHUB_USERNAME/yt-dlp-web:latest
+>>>>>>> 831b5f7dab502c2631355cc9a518dcd5d832690b
 ```
 
 ---
