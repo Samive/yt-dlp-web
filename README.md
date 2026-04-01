@@ -25,13 +25,8 @@ A beautiful, self-hosted web application for downloading YouTube (and 1000+ othe
 ### Pull and run from Docker Hub
 
 ```bash
-<<<<<<< HEAD
 docker pull samive/yt-dlp-web:latest
 docker run -d -p 8000:8000 --name yt-dlp-web samive/yt-dlp-web:latest
-=======
-docker pull YOUR_DOCKERHUB_USERNAME/yt-dlp-web:latest
-docker run -d -p 8000:8000 --name yt-dlp-web YOUR_DOCKERHUB_USERNAME/yt-dlp-web:latest
->>>>>>> 831b5f7dab502c2631355cc9a518dcd5d832690b
 ```
 
 Then open **http://localhost:8000** in your browser.
@@ -43,11 +38,7 @@ docker run -d \
   -p 8000:8000 \
   -v $(pwd)/downloads:/app/web/backend/downloads \
   --name yt-dlp-web \
-<<<<<<< HEAD
   samive/yt-dlp-web:latest
-=======
-  YOUR_DOCKERHUB_USERNAME/yt-dlp-web:latest
->>>>>>> 831b5f7dab502c2631355cc9a518dcd5d832690b
 ```
 
 ### Stop / remove the container
@@ -68,7 +59,7 @@ docker rm yt-dlp-web
 ### Build the image
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USERNAME/yt-dlp-web.git
+git clone https://github.com/samive/yt-dlp-web.git
 cd yt-dlp-web
 docker build -t yt-dlp-web .
 ```
@@ -93,11 +84,8 @@ Open **http://localhost:8000**.
 ### Setup
 
 ```bash
-# Install yt-dlp from source
-pip install -e ".[default]"
-
-# Install backend dependencies
-pip install fastapi "uvicorn[standard]" httpx
+# Install dependencies
+pip install yt-dlp fastapi "uvicorn[standard]" httpx
 
 # Start the server
 python -m uvicorn web.backend.main:app --reload --port 8000
@@ -109,7 +97,7 @@ Open **http://localhost:8000**.
 
 ## Usage Guide
 
-1. **Paste a URL** — Paste any YouTube (or supported site) link into the input field and click **Fetch**
+1. **Paste a URL** — Paste any YouTube or supported site link into the input field and click **Fetch**
 2. **Review video info** — Thumbnail, title, uploader, duration, views, likes, and upload date are shown
 3. **Select a format** — Choose from the dropdown (highest quality is pre-selected)
 4. **Download** — Click the **Download** button and watch the live progress bar
@@ -124,70 +112,10 @@ docker run -d \
   -p 8000:8000 \
   -v $(pwd)/cookies.txt:/app/web/backend/cookies.txt:ro \
   --name yt-dlp-web \
-<<<<<<< HEAD
   samive/yt-dlp-web:latest
-=======
-  YOUR_DOCKERHUB_USERNAME/yt-dlp-web:latest
->>>>>>> 831b5f7dab502c2631355cc9a518dcd5d832690b
 ```
 
 > **Note:** Using cookies with Chrome on Windows may cause issues due to DPAPI encryption. Firefox or Edge cookies work more reliably.
-
----
-
-## Publish to Docker Hub
-
-### 1. Create a Docker Hub account
-
-Sign up at [hub.docker.com](https://hub.docker.com) and create a public repository named `yt-dlp-web`.
-
-### 2. Log in from terminal
-
-```bash
-docker login
-```
-
-### 3. Build and tag the image
-
-```bash
-<<<<<<< HEAD
-docker build -t samive/yt-dlp-web:latest .
-=======
-docker build -t YOUR_DOCKERHUB_USERNAME/yt-dlp-web:latest .
->>>>>>> 831b5f7dab502c2631355cc9a518dcd5d832690b
-```
-
-### 4. Push to Docker Hub
-
-```bash
-<<<<<<< HEAD
-docker push samive/yt-dlp-web:latest
-=======
-docker push YOUR_DOCKERHUB_USERNAME/yt-dlp-web:latest
->>>>>>> 831b5f7dab502c2631355cc9a518dcd5d832690b
-```
-
-### 5. (Optional) Tag a version
-
-```bash
-<<<<<<< HEAD
-docker tag samive/yt-dlp-web:latest samive/yt-dlp-web:1.0.0
-docker push samive/yt-dlp-web:1.0.0
-=======
-docker tag YOUR_DOCKERHUB_USERNAME/yt-dlp-web:latest YOUR_DOCKERHUB_USERNAME/yt-dlp-web:1.0.0
-docker push YOUR_DOCKERHUB_USERNAME/yt-dlp-web:1.0.0
->>>>>>> 831b5f7dab502c2631355cc9a518dcd5d832690b
-```
-
-Anyone can now pull and run your image with:
-
-```bash
-<<<<<<< HEAD
-docker pull samive/yt-dlp-web:latest
-=======
-docker pull YOUR_DOCKERHUB_USERNAME/yt-dlp-web:latest
->>>>>>> 831b5f7dab502c2631355cc9a518dcd5d832690b
-```
 
 ---
 
