@@ -134,3 +134,7 @@ yt-dlp-plugins
 
 # Packages
 yt_dlp_ejs/
+
+# yt-dlp web UI
+web/backend/cookies.txt
+web/backend/downloads/

@@ -1,0 +1,14 @@
+web/backend/downloads/
+web/backend/cookies.txt
+web/.dockerignore
+.venv/
+.git/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+test/
+bundle/
+devscripts/
+*.md
+!README.md
