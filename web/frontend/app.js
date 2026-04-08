@@ -1,4 +1,4 @@
-const API = 'http://localhost:8000';
+const API = '';
 
 const urlInput      = document.getElementById('url-input');
 const clearBtn      = document.getElementById('clear-btn');
