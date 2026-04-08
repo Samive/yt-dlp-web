@@ -4,7 +4,9 @@ import uuid
 import asyncio
 import httpx
 import urllib.parse
+import mimetypes
 from pathlib import Path
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, Response, JSONResponse, FileResponse
@@ -13,6 +15,7 @@ from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import yt_dlp
+
 
 app = FastAPI()
 
@@ -23,30 +26,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(status_code=500, content={"detail": str(exc)})
 
+
 DOWNLOAD_DIR = Path(__file__).parent / "downloads"
 DOWNLOAD_DIR.mkdir(exist_ok=True)
+
 FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 
+
 FORMAT_PRESETS = {
-    "best":  "bestvideo+bestaudio/bestvideo/best",
+    "best": "bestvideo+bestaudio/bestvideo/best",
     "1080p": "bestvideo[height<=1080]+bestaudio/bestvideo[height<=1080]/best",
-    "720p":  "bestvideo[height<=720]+bestaudio/bestvideo[height<=720]/best",
-    "480p":  "bestvideo[height<=480]+bestaudio/bestvideo[height<=480]/best",
+    "720p": "bestvideo[height<=720]+bestaudio/bestvideo[height<=720]/best",
+    "480p": "bestvideo[height<=480]+bestaudio/bestvideo[height<=480]/best",
     "audio": "bestaudio/best",
 }
 
-# file_id -> { status, percent, eta, speed, filepath, ... }
+# file_id -> progress/meta
 _progress: dict[str, dict] = {}
-# file_id -> asyncio.Task
+
+# file_id -> running task
 _tasks: dict[str, asyncio.Task] = {}
 
 
 class InfoRequest(BaseModel):
     url: str
+
 
 class DownloadRequest(BaseModel):
     url: str
@@ -62,24 +71,24 @@ async def index():
 
 @app.post("/info")
 async def get_info(req: InfoRequest):
-    ydl_opts = {"quiet": True, "no_warnings": True, "skip_download": True, "outtmpl": output_template, "merge_output_format": "mp4", "postprocessors": [{"key": "FFmpegVideoConvertor","preferedformat": "mp4"}]}
-    info = None
+    ydl_opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+    }
+
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = await asyncio.to_thread(ydl.extract_info, req.url, download=False)
-    except Exception:
-        pass
-    if not info:
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = await asyncio.to_thread(ydl.extract_info, req.url, download=False)
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     if not info:
         raise HTTPException(status_code=400, detail="Could not extract video info.")
 
     thumbnails = info.get("thumbnails") or []
     thumbnail_url = None
+
     if thumbnails:
         ranked = sorted(
             (t for t in thumbnails if t.get("url")),
@@ -87,6 +96,7 @@ async def get_info(req: InfoRequest):
             reverse=True,
         )
         thumbnail_url = ranked[0]["url"] if ranked else None
+
     thumbnail_url = thumbnail_url or info.get("thumbnail")
 
     formats = [
@@ -128,33 +138,49 @@ async def proxy_thumbnail(url: str):
     try:
         async with httpx.AsyncClient(follow_redirects=True, timeout=10) as client:
             r = await client.get(url, headers={"User-Agent": "Mozilla/5.0"})
-        return Response(content=r.content, media_type=r.headers.get("content-type", "image/jpeg"))
+        return Response(
+            content=r.content,
+            media_type=r.headers.get("content-type", "image/jpeg"),
+        )
     except Exception:
         raise HTTPException(status_code=502, detail="Could not fetch thumbnail")
 
 
 async def _run_download(file_id: str, url: str, fmt: str, output_template: str):
-    """Runs yt-dlp in a thread and updates _progress. Cancellable via task cancellation."""
     cancelled = asyncio.Event()
 
     def progress_hook(d):
         if cancelled.is_set():
             raise yt_dlp.utils.DownloadError("Cancelled")
+
         status = d.get("status")
+
         if status == "downloading":
             downloaded = d.get("downloaded_bytes", 0)
             total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
             pct = round((downloaded / total) * 100, 1) if total else 0
             eta = d.get("eta")
             speed = d.get("speed")
-            _progress[file_id].update({
-                "status": "downloading",
-                "percent": pct,
-                "eta": int(eta) if eta else None,
-                "speed": round(speed / 1024 / 1024, 2) if speed else None,
-            })
+
+            if file_id in _progress:
+                _progress[file_id].update(
+                    {
+                        "status": "downloading",
+                        "percent": pct,
+                        "eta": int(eta) if eta else None,
+                        "speed": round(speed / 1024 / 1024, 2) if speed else None,
+                    }
+                )
+
         elif status == "finished":
-            _progress[file_id].update({"status": "finished", "percent": 100, "eta": 0})
+            if file_id in _progress:
+                _progress[file_id].update(
+                    {
+                        "status": "finished",
+                        "percent": 100,
+                        "eta": 0,
+                    }
+                )
 
     ydl_opts = {
         "quiet": True,
@@ -162,6 +188,12 @@ async def _run_download(file_id: str, url: str, fmt: str, output_template: str):
         "format": fmt,
         "outtmpl": output_template,
         "merge_output_format": "mp4",
+        "postprocessors": [
+            {
+                "key": "FFmpegVideoConvertor",
+                "preferedformat": "mp4",
+            }
+        ],
         "progress_hooks": [progress_hook],
     }
 
@@ -169,14 +201,48 @@ async def _run_download(file_id: str, url: str, fmt: str, output_template: str):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = await asyncio.to_thread(ydl.extract_info, url, download=True)
         return info
+
     except asyncio.CancelledError:
         cancelled.set()
-        _progress[file_id]["status"] = "cancelled"
+        if file_id in _progress:
+            _progress[file_id]["status"] = "cancelled"
         raise
+
     except Exception as e:
-        _progress[file_id]["status"] = "error"
-        _progress[file_id]["error"] = str(e)
+        if file_id in _progress:
+            _progress[file_id]["status"] = "error"
+            _progress[file_id]["error"] = str(e)
         raise
+
+
+def _finalize_download(file_id: str, info: dict):
+    matches = list(DOWNLOAD_DIR.glob(f"{file_id}.*"))
+    if not matches:
+        _progress[file_id]["status"] = "error"
+        _progress[file_id]["error"] = "Download failed: file not found"
+        return
+
+    filepath = matches[0]
+    title = info.get("title") or file_id
+
+    filename_ascii = "".join(
+        c for c in title if c.isascii() and (c.isalnum() or c in " ._-()")
+    ).strip()
+    if not filename_ascii:
+        filename_ascii = file_id
+
+    filename_ascii = f"{filename_ascii}{filepath.suffix}"
+    filename_encoded = urllib.parse.quote(f"{title}{filepath.suffix}")
+
+    _progress[file_id].update(
+        {
+            "status": "ready",
+            "percent": 100,
+            "filepath": str(filepath),
+            "filename_ascii": filename_ascii,
+            "filename_encoded": filename_encoded,
+        }
+    )
 
 
 @app.post("/download")
@@ -186,56 +252,50 @@ async def download_video(req: DownloadRequest):
     fmt = req.format_id if req.format_id else FORMAT_PRESETS.get(req.preset, FORMAT_PRESETS["best"])
 
     _progress[file_id] = {
-        "status": "starting", "percent": 0, "eta": None, "speed": None,
-        "url": req.url, "fmt": fmt, "output_template": output_template,
+        "status": "starting",
+        "percent": 0,
+        "eta": None,
+        "speed": None,
+        "url": req.url,
+        "fmt": fmt,
+        "output_template": output_template,
     }
 
     task = asyncio.create_task(_run_download(file_id, req.url, fmt, output_template))
     _tasks[file_id] = task
 
-    try:
-        info = await task
-    except asyncio.CancelledError:
-        return JSONResponse({"file_id": file_id, "status": "cancelled"})
-    except Exception as e:
-        _tasks.pop(file_id, None)
-        raise HTTPException(status_code=400, detail=_progress.get(file_id, {}).get("error", str(e)))
+    def _done_callback(t: asyncio.Task):
+        try:
+            info = t.result()
+            _finalize_download(file_id, info)
+        except asyncio.CancelledError:
+            if file_id in _progress:
+                _progress[file_id]["status"] = "cancelled"
+        except Exception as e:
+            if file_id in _progress:
+                _progress[file_id]["status"] = "error"
+                _progress[file_id]["error"] = str(e)
+        finally:
+            _tasks.pop(file_id, None)
 
-    _tasks.pop(file_id, None)
+    task.add_done_callback(_done_callback)
 
-    matches = list(DOWNLOAD_DIR.glob(f"{file_id}.*"))
-    if not matches:
-        raise HTTPException(status_code=500, detail="Download failed: file not found")
-
-    filepath = matches[0]
-    title = info.get("title") or file_id
-    filename_ascii = "".join(c for c in title if c.isascii() and (c.isalnum() or c in " ._-()")).strip()
-    if not filename_ascii:
-        filename_ascii = file_id
-    filename_ascii += filepath.suffix
-    filename_encoded = urllib.parse.quote(title + filepath.suffix)
-
-    _progress[file_id].update({
-        "status": "ready",
-        "percent": 100,
-        "filepath": str(filepath),
-        "filename_ascii": filename_ascii,
-        "filename_encoded": filename_encoded,
-    })
-
-    return JSONResponse({"file_id": file_id, "status": "ready"})
+    return JSONResponse({"file_id": file_id, "status": "started"}, status_code=202)
 
 
 @app.post("/cancel/{file_id}")
 async def cancel_download(file_id: str):
     task = _tasks.get(file_id)
+
     if task and not task.done():
         task.cancel()
-        # Clean up partial files
+
         for f in DOWNLOAD_DIR.glob(f"{file_id}*"):
             f.unlink(missing_ok=True)
+
         _progress[file_id] = {"status": "cancelled", "percent": 0}
         return JSONResponse({"status": "cancelled"})
+
     return JSONResponse({"status": "not_found"})
 
 
@@ -243,7 +303,7 @@ async def cancel_download(file_id: str):
 async def serve_file(file_id: str):
     meta = _progress.get(file_id)
     if not meta or meta.get("status") != "ready":
-        raise HTTPException(status_code=404, detail="File not ready or already downloaded")
+        raise HTTPException(status_code=404, detail="File not ready")
 
     filepath = Path(meta["filepath"])
     if not filepath.exists():
@@ -251,22 +311,16 @@ async def serve_file(file_id: str):
 
     filename_ascii = meta["filename_ascii"]
     filename_encoded = meta["filename_encoded"]
-
-    def iterfile():
-        with open(filepath, "rb") as f:
-            yield from f
-        filepath.unlink(missing_ok=True)
-        _progress.pop(file_id, None)
-
-    from fastapi.responses import FileResponse
+    media_type = mimetypes.guess_type(str(filepath))[0] or "application/octet-stream"
 
     return FileResponse(
         path=filepath,
         media_type=media_type,
         filename=filename_ascii,
         headers={
-            "Content-Disposition": f"attachment; filename*=UTF-8''{filename_encoded}"
-        }   
+            "Content-Disposition": f"attachment; filename=\"{filename_ascii}\"; filename*=UTF-8''{filename_encoded}",
+            "Accept-Ranges": "bytes",
+        },
     )
 
 
@@ -276,17 +330,22 @@ async def progress_stream(file_id: str, request: Request):
         while True:
             if await request.is_disconnected():
                 break
+
             data = _progress.get(file_id)
             if data:
                 yield f"data: {json.dumps(data)}\n\n"
                 if data.get("status") in ("ready", "cancelled", "error"):
                     break
+
             await asyncio.sleep(0.5)
 
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 
