@@ -62,7 +62,7 @@ async def index():
 
 @app.post("/info")
 async def get_info(req: InfoRequest):
-    ydl_opts = {"quiet": True, "no_warnings": True, "skip_download": True}
+    ydl_opts = {"quiet": True, "no_warnings": True, "skip_download": True, "outtmpl": output_template, "merge_output_format": "mp4", "postprocessors": [{"key": "FFmpegVideoConvertor","preferedformat": "mp4"}]}
     info = None
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -258,12 +258,15 @@ async def serve_file(file_id: str):
         filepath.unlink(missing_ok=True)
         _progress.pop(file_id, None)
 
-    return StreamingResponse(
-        iterfile(),
-        media_type="video/mp4",
+    from fastapi.responses import FileResponse
+
+    return FileResponse(
+        path=filepath,
+        media_type=media_type,
+        filename=filename_ascii,
         headers={
-            "Content-Disposition": f"attachment; filename=\"{filename_ascii}\"; filename*=UTF-8''{filename_encoded}",
-        },
+            "Content-Disposition": f"attachment; filename*=UTF-8''{filename_encoded}"
+        }   
     )
 
 
