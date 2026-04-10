@@ -1,0 +1,9 @@
+services:
+  yt-dlp-web:
+    build: .
+    container_name: yt-dlp-web
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./cookies.txt:/tmp/cookies.txt:ro
+      - ./downloads:/app/web/backend/downloads
